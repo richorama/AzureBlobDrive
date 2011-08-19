@@ -10,6 +10,8 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Runtime.Caching;
 using System.Configuration;
+using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace Two10.AzureBlobDrive
 {
@@ -39,6 +41,7 @@ namespace Two10.AzureBlobDrive
                 var dictionary = info.Context as Dictionary<string, BlobStream>;
                 if (dictionary.ContainsKey(filename))
                 {
+                    Trace.WriteLine(string.Format("CloseFile {0}", filename));
                     BlobStream stream = dictionary[filename];
                     stream.Commit();
                     stream.Dispose();
@@ -54,6 +57,9 @@ namespace Two10.AzureBlobDrive
         {
             try
             {
+
+                Trace.WriteLine(string.Format("CreateDirectory {0}", filename));
+
                 string[] path = filename.Split('\\');
                 if (path.Length > 2)
                 {
@@ -75,7 +81,7 @@ namespace Two10.AzureBlobDrive
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Trace.WriteLine(ex.ToString());
                 return -1;
             }
         }
@@ -95,6 +101,8 @@ namespace Two10.AzureBlobDrive
         {
             try
             {
+                Trace.WriteLine(string.Format("DeleteDirectory {0}", filename));
+
                 var container = this.GetContainer(filename);
                 if (null == container)
                 {
@@ -109,7 +117,7 @@ namespace Two10.AzureBlobDrive
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Trace.WriteLine(ex.ToString());
                 return -1;
             }
         }
@@ -118,6 +126,8 @@ namespace Two10.AzureBlobDrive
         {
             try
             {
+                Trace.WriteLine(string.Format("DeleteFile {0}", filename));
+
                 var blob = this.GetBlob(filename);
                 if (null == blob)
                 {
@@ -128,7 +138,7 @@ namespace Two10.AzureBlobDrive
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Trace.WriteLine(ex.ToString());
                 return -1;
             }
         }
@@ -146,7 +156,7 @@ namespace Two10.AzureBlobDrive
             System.Collections.ArrayList files,
             DokanFileInfo info)
         {
-            Console.WriteLine(filename);
+            Trace.WriteLine(string.Format("FindFiles {0}", filename));
 
             if (filename == "\\")
             {
@@ -169,7 +179,8 @@ namespace Two10.AzureBlobDrive
                 {
                     return -1;
                 }
-                foreach (var blob in container.ListBlobs())
+                object localsync = new object();
+                Parallel.ForEach<IListBlobItem>(container.ListBlobs(), blob =>
                 {
                     try
                     {
@@ -181,10 +192,13 @@ namespace Two10.AzureBlobDrive
                         finfo.LastWriteTime = DateTime.Now;
                         finfo.CreationTime = DateTime.Now;
                         finfo.Length = blobDetail.Properties.Length;
-                        files.Add(finfo);
+                        lock (localsync)
+                        {
+                            files.Add(finfo);
+                        }
                     }
                     catch { }
-                }
+                });
 
                 // TODO: Work out the sub containers here
                 return 0;
@@ -253,7 +267,7 @@ namespace Two10.AzureBlobDrive
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Trace.WriteLine(ex.ToString());
                 return null;
             }
         }
@@ -264,6 +278,8 @@ namespace Two10.AzureBlobDrive
             FileInformation fileinfo,
             DokanFileInfo info)
         {
+            Trace.WriteLine(string.Format("GetFileInformation {0}", filename));
+
             if (filename == "\\")
             {
                 fileinfo.Attributes = System.IO.FileAttributes.Directory;
@@ -314,6 +330,8 @@ namespace Two10.AzureBlobDrive
             bool replace,
             DokanFileInfo info)
         {
+            Trace.WriteLine(string.Format("MoveFile {0}", filename));
+
             try
             {
                 var sourceBlob = this.GetBlob(filename, true);
@@ -324,7 +342,7 @@ namespace Two10.AzureBlobDrive
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex.ToString());
+                Trace.WriteLine(ex.ToString());
                 return -1;
             }
 
@@ -339,6 +357,8 @@ namespace Two10.AzureBlobDrive
 
         private MemoryStream GetStream(string filename)
         {
+            const int MAX_SIZE_FOR_CACHE = 1024 * 1024;
+
             lock (streamCache)
             {
                 MemoryStream stream = streamCache[filename] as MemoryStream;
@@ -351,7 +371,11 @@ namespace Two10.AzureBlobDrive
                     }
                     stream = new MemoryStream();
                     blob.DownloadToStream(stream);
-                    streamCache.Add(filename, stream, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
+                    //if (stream.Length < MAX_SIZE_FOR_CACHE)
+                    //{
+                        // don't cache huge files
+                        streamCache.Add(filename, stream, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
+                    //}
                 }
                 stream.Position = 0;
                 return stream;
@@ -366,6 +390,8 @@ namespace Two10.AzureBlobDrive
             long offset,
             DokanFileInfo info)
         {
+            Trace.WriteLine(string.Format("ReadFile {0}", filename));
+
             try
             {
                 MemoryStream ms = GetStream(filename);
@@ -379,7 +405,7 @@ namespace Two10.AzureBlobDrive
             }
             catch (Exception ex)
             {
-                Console.WriteLine(ex);
+                Trace.WriteLine(ex);
                 return -1;
             }
         }
@@ -441,6 +467,7 @@ namespace Two10.AzureBlobDrive
             long offset,
             DokanFileInfo info)
         {
+            Trace.WriteLine(string.Format("WriteFile {0}", filename));
 
             if (info.Context == null)
             {
@@ -467,18 +494,18 @@ namespace Two10.AzureBlobDrive
 
         private CloudBlob GetBlobDetail(string uri)
         {
-            //lock (blobCache)
-            //{
-            //    CloudBlob blob = blobCache[uri] as CloudBlob;
-            //    if (null == blob)
-            //    {
-                    var blob = client.GetBlobReference(uri);
+            lock (blobCache)
+            {
+                CloudBlob blob = blobCache[uri] as CloudBlob;
+                if (null == blob)
+                {
+                    blob = client.GetBlobReference(uri);
                     blob.FetchAttributes();
-                   // blobCache.Add(uri, blob, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
-                //}
-           
+                    blobCache.Add(uri, blob, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
+                }
+
                 return blob;
-            //}
+            }
         
         }
 
