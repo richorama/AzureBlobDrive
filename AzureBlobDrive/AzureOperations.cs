@@ -180,13 +180,14 @@ namespace Two10.AzureBlobDrive
                     return -1;
                 }
                 object localsync = new object();
+        
                 Parallel.ForEach<IListBlobItem>(container.ListBlobs(), blob =>
                 {
                     try
                     {
                         var blobDetail = GetBlobDetail(blob.Uri.OriginalString);
                         FileInformation finfo = new FileInformation();
-                        finfo.FileName = blobDetail.Uri.Segments.Last();
+                        finfo.FileName =  System.Web.HttpUtility.UrlDecode(blobDetail.Uri.Segments.Last());
                         finfo.Attributes = System.IO.FileAttributes.Normal;
                         finfo.LastAccessTime = DateTime.Now;
                         finfo.LastWriteTime = DateTime.Now;
@@ -247,8 +248,8 @@ namespace Two10.AzureBlobDrive
                     }
                     var blobs = container.ListBlobs();
                     string[] path = filename.Split('\\');
-                    string name = path.Last();
-                    var blob = (from b in blobs where b.Uri.Segments.Last() == name select b).FirstOrDefault();
+                    string name =  path.Last();
+                    var blob = (from b in blobs where System.Web.HttpUtility.UrlDecode(b.Uri.Segments.Last()) == name select b).FirstOrDefault();
                     if (null == blob)
                     {
                         return null;
@@ -295,10 +296,11 @@ namespace Two10.AzureBlobDrive
                 return -1;
 
             var blob = GetBlob(filename, true);
+            
             if (blob != null)
             {
                 var blobDetail = GetBlobDetail(blob.Uri.OriginalString);
-                fileinfo.FileName = blobDetail.Uri.Segments.Last();
+                fileinfo.FileName = System.Web.HttpUtility.UrlDecode(blobDetail.Uri.Segments.Last());
                 fileinfo.Attributes = System.IO.FileAttributes.Normal;
                 fileinfo.LastAccessTime = DateTime.Now;
                 fileinfo.LastWriteTime = DateTime.Now;
@@ -337,7 +339,7 @@ namespace Two10.AzureBlobDrive
                 var sourceBlob = this.GetBlob(filename, true);
                 var destBlob = this.GetBlob(filename, false);
                 destBlob.CopyFromBlob(sourceBlob);
-                info.IsDirectory = true;
+                info.IsDirectory = false;
                 return 0;
             }
             catch (Exception ex)
