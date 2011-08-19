@@ -9,6 +9,7 @@ using Microsoft.WindowsAzure.StorageClient;
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Runtime.Caching;
+using System.Configuration;
 
 namespace Two10.AzureBlobDrive
 {
@@ -22,7 +23,7 @@ namespace Two10.AzureBlobDrive
 
         public AzureOperations()
         {
-            CloudStorageAccount account = CloudStorageAccount.Parse("DefaultEndpointsProtocol=https;AccountName=two10ra;AccountKey=dmIMUY1mg/qPeOgGmCkO333L26cNcnUA1uMcSSOFMB3cB8LkdDkh02RaYTPLBL8qMqnqazqd6uMxI2bJJEnj0g==");
+            CloudStorageAccount account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["AzureConnectionString"]);
             client = account.CreateCloudBlobClient();
         }
 

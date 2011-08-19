@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.Win32;
 using Dokan;
+using System.Configuration;
 
 namespace Two10.AzureBlobDrive
 {
@@ -11,7 +12,7 @@ namespace Two10.AzureBlobDrive
         static void Main(string[] args)
         {
             DokanOptions opt = new DokanOptions();
-            opt.MountPoint = "r:\\";
+            opt.MountPoint = ConfigurationManager.AppSettings["DriveLetter"];
             opt.DebugMode = true;
             opt.UseStdErr = true;
             opt.VolumeLabel = "AZURE";
