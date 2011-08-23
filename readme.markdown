@@ -26,6 +26,7 @@ Limitations
  - Folder names must be in lower case, and not contain spaces and other special characters.
  - Performance is poor, and large files are not recommended.
  - Files and folders are cached for one minute, so changes made by other machines may not be instantly viewable.
+ - Files (blobs) cannot be empty (i.e. have a zero size).
 
 About
 -----

@@ -12,9 +12,37 @@ using System.Runtime.Caching;
 using System.Configuration;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Microsoft.WindowsAzure.StorageClient.Protocol;
 
 namespace Two10.AzureBlobDrive
 {
+
+    static class Extensions
+    {
+        public static string AcquireLease(this CloudBlob blob)
+        {
+            var creds = blob.ServiceClient.Credentials;
+            var transformedUri = new Uri(creds.TransformUri(blob.Uri.ToString()));
+            var req = BlobRequest.Lease(transformedUri, 60, LeaseAction.Acquire, null);
+            blob.ServiceClient.Credentials.SignRequest(req);
+            using (var response = req.GetResponse())
+            {
+                return response.Headers["x-ms-lease-id"];
+            }
+        }
+
+        public static void ReleaseLease(this CloudBlob blob, string leaseId)
+        {
+            var creds = blob.ServiceClient.Credentials;
+            var transformedUri = new Uri(creds.TransformUri(blob.Uri.ToString()));
+            var req = BlobRequest.Lease(transformedUri, 0, LeaseAction.Release, leaseId);
+            blob.ServiceClient.Credentials.SignRequest(req);
+            using (var response = req.GetResponse())
+            {
+            }
+        }
+    }
+
 
     class AzureOperations : DokanOperations
     {
@@ -22,6 +50,7 @@ namespace Two10.AzureBlobDrive
         private MemoryCache streamCache = MemoryCache.Default;
         private MemoryCache blobCache = MemoryCache.Default;
         private MemoryCache miscCache = MemoryCache.Default;
+        private Dictionary<string, string > locks = new Dictionary<string, string>();
 
         public AzureOperations()
         {
@@ -45,7 +74,7 @@ namespace Two10.AzureBlobDrive
                     BlobStream stream = dictionary[filename];
                     stream.Commit();
                     stream.Dispose();
-                
+                    this.blobCache.Remove(filename);
                 }
                 dictionary.Remove(filename);
             }
@@ -323,7 +352,20 @@ namespace Two10.AzureBlobDrive
             long length,
             DokanFileInfo info)
         {
-            return 0;
+            try
+            {
+                lock (this.locks)
+                {
+                    var blob = this.GetBlobDetail(filename);
+                    this.locks.Add(filename, blob.AcquireLease());
+                    return 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex.ToString());
+                return -1;
+            }
         }
 
         public int MoveFile(
@@ -337,7 +379,7 @@ namespace Two10.AzureBlobDrive
             try
             {
                 var sourceBlob = this.GetBlob(filename, true);
-                var destBlob = this.GetBlob(filename, false);
+                var destBlob = this.GetBlob(newname, false);
                 destBlob.CopyFromBlob(sourceBlob);
                 info.IsDirectory = false;
                 return 0;
@@ -440,9 +482,27 @@ namespace Two10.AzureBlobDrive
             return -1;
         }
 
+       
+
         public int UnlockFile(string filename, long offset, long length, DokanFileInfo info)
         {
-            return 0;
+            try
+            {
+                lock (this.locks)
+                {
+                    var blob = this.GetBlob(filename);
+                    if (this.locks.ContainsKey(filename))
+                    {
+                        blob.ReleaseLease(this.locks[filename]);
+                    }
+                    return 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine(ex.ToString());
+                return -1;
+            }
         }
 
         public int Unmount(DokanFileInfo info)
