@@ -1,48 +1,18 @@
 ﻿using System;
-using System.Linq;
 using System.Collections.Generic;
-using System.Text;
-using Microsoft.Win32;
+using System.Configuration;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.Caching;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using Dokan;
 using Microsoft.WindowsAzure;
 using Microsoft.WindowsAzure.StorageClient;
-using System.IO;
-using System.Text.RegularExpressions;
-using System.Runtime.Caching;
-using System.Configuration;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using Microsoft.WindowsAzure.StorageClient.Protocol;
 
 namespace Two10.AzureBlobDrive
 {
-
-    static class Extensions
-    {
-        public static string AcquireLease(this CloudBlob blob)
-        {
-            var creds = blob.ServiceClient.Credentials;
-            var transformedUri = new Uri(creds.TransformUri(blob.Uri.ToString()));
-            var req = BlobRequest.Lease(transformedUri, 60, LeaseAction.Acquire, null);
-            blob.ServiceClient.Credentials.SignRequest(req);
-            using (var response = req.GetResponse())
-            {
-                return response.Headers["x-ms-lease-id"];
-            }
-        }
-
-        public static void ReleaseLease(this CloudBlob blob, string leaseId)
-        {
-            var creds = blob.ServiceClient.Credentials;
-            var transformedUri = new Uri(creds.TransformUri(blob.Uri.ToString()));
-            var req = BlobRequest.Lease(transformedUri, 0, LeaseAction.Release, leaseId);
-            blob.ServiceClient.Credentials.SignRequest(req);
-            using (var response = req.GetResponse())
-            {
-            }
-        }
-    }
-
 
     class AzureOperations : DokanOperations
     {
@@ -98,7 +68,9 @@ namespace Two10.AzureBlobDrive
                 
                 if (!IsContainerNameValid(newContainerName))
                 {
-                    return -1;
+                    //return -1;
+                    Trace.WriteLine("WARNING, container name may not be valid");
+                    newContainerName = newContainerName.Trim().Replace(" ", "-").ToLower();
                 }
                 var container = client.GetContainerReference(newContainerName);
                 container.CreateIfNotExist();
@@ -157,7 +129,7 @@ namespace Two10.AzureBlobDrive
             {
                 Trace.WriteLine(string.Format("DeleteFile {0}", filename));
 
-                var blob = this.GetBlob(filename);
+                var blob = this.GetBlob(filename, true);
                 if (null == blob)
                 {
                     return -1;
@@ -259,16 +231,12 @@ namespace Two10.AzureBlobDrive
             return container;
         }
 
-        private CloudBlob GetBlob(string filename)
-        {
-            return this.GetBlob(filename, true);
-        }
         
-        private CloudBlob GetBlob(string filename, bool mustExit)
+        private CloudBlob GetBlob(string filename, bool mustExist)
         {
             try
             {
-                if (mustExit)
+                if (mustExist)
                 {
                     var container = GetContainer(filename);
                     if (null == container)
@@ -338,10 +306,12 @@ namespace Two10.AzureBlobDrive
             }
             else
             {
+                fileinfo.FileName = container.Name;
                 fileinfo.Attributes = System.IO.FileAttributes.Directory;
                 fileinfo.LastAccessTime = DateTime.Now;
                 fileinfo.LastWriteTime = DateTime.Now;
                 fileinfo.CreationTime = DateTime.Now;
+
             }
             return 0;
         }
@@ -354,6 +324,7 @@ namespace Two10.AzureBlobDrive
         {
             try
             {
+                Trace.WriteLine(string.Format("LockFile {0}", filename));
                 lock (this.locks)
                 {
                     var blob = this.GetBlobDetail(filename);
@@ -378,11 +349,21 @@ namespace Two10.AzureBlobDrive
 
             try
             {
+
                 var sourceBlob = this.GetBlob(filename, true);
-                var destBlob = this.GetBlob(newname, false);
-                destBlob.CopyFromBlob(sourceBlob);
-                info.IsDirectory = false;
-                return 0;
+                if (null != sourceBlob)
+                {
+                    var destBlob = this.GetBlob(newname, false);
+                    destBlob.CopyFromBlob(sourceBlob);
+                    info.IsDirectory = false;
+                    return 0;
+                }
+                else
+                {
+                    // you cannot rename a container.
+                    return -1;
+
+                }
             }
             catch (Exception ex)
             {
@@ -398,17 +379,16 @@ namespace Two10.AzureBlobDrive
         }
 
 
-
         private MemoryStream GetStream(string filename)
         {
-            const int MAX_SIZE_FOR_CACHE = 1024 * 1024;
+            //const int MAX_SIZE_FOR_CACHE = 1024 * 1024;
 
             lock (streamCache)
             {
                 MemoryStream stream = streamCache[filename] as MemoryStream;
                 if (null == stream)
                 {
-                    var blob = GetBlob(filename);
+                    var blob = GetBlob(filename, true);
                     if (null == blob)
                     {
                         return null;
@@ -469,6 +449,8 @@ namespace Two10.AzureBlobDrive
             System.IO.FileAttributes attr,
             DokanFileInfo info)
         {
+            Trace.WriteLine(string.Format("SetFileAttributes {0}", filename));
+
             return -1;
         }
 
@@ -479,6 +461,7 @@ namespace Two10.AzureBlobDrive
             DateTime mtime,
             DokanFileInfo info)
         {
+            Trace.WriteLine(string.Format("SetFileTime {0}", filename));
             return -1;
         }
 
@@ -488,9 +471,11 @@ namespace Two10.AzureBlobDrive
         {
             try
             {
+                Trace.WriteLine(string.Format("UnlockFile {0}", filename));
+
                 lock (this.locks)
                 {
-                    var blob = this.GetBlob(filename);
+                    var blob = this.GetBlob(filename, true);
                     if (this.locks.ContainsKey(filename))
                     {
                         blob.ReleaseLease(this.locks[filename]);
@@ -507,6 +492,7 @@ namespace Two10.AzureBlobDrive
 
         public int Unmount(DokanFileInfo info)
         {
+            Trace.WriteLine("Unmount");
             return 0;
         }
 

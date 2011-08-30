@@ -1,9 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Microsoft.Win32;
-using Dokan;
 using System.Configuration;
+using Dokan;
 
 namespace Two10.AzureBlobDrive
 {
