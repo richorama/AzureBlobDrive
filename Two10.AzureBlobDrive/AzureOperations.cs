@@ -14,7 +14,7 @@ using Microsoft.WindowsAzure.StorageClient;
 namespace Two10.AzureBlobDrive
 {
 
-    class AzureOperations : DokanOperations
+    public class AzureOperations : DokanOperations
     {
         private CloudBlobClient client;
         private MemoryCache streamCache = MemoryCache.Default;

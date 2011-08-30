@@ -1,8 +1,8 @@
-﻿using System;
-using System.Configuration;
+﻿using System.Configuration;
+using System.Diagnostics;
 using Dokan;
 
-namespace Two10.AzureBlobDrive
+namespace Two10.AzureBlobDrive.Console
 {
     class Program
     {
@@ -17,25 +17,25 @@ namespace Two10.AzureBlobDrive
             switch (status)
             {
                 case DokanNet.DOKAN_DRIVE_LETTER_ERROR:
-                    Console.WriteLine("Drive letter error");
+                    Trace.WriteLine("Drive letter error");
                     break;
                 case DokanNet.DOKAN_DRIVER_INSTALL_ERROR:
-                    Console.WriteLine("Driver install error");
+                    Trace.WriteLine("Driver install error");
                     break;
                 case DokanNet.DOKAN_MOUNT_ERROR:
-                    Console.WriteLine("Mount error");
+                    Trace.WriteLine("Mount error");
                     break;
                 case DokanNet.DOKAN_START_ERROR:
-                    Console.WriteLine("Start error");
+                    Trace.WriteLine("Start error");
                     break;
                 case DokanNet.DOKAN_ERROR:
-                    Console.WriteLine("Unknown error");
+                    Trace.WriteLine("Unknown error");
                     break;
                 case DokanNet.DOKAN_SUCCESS:
-                    Console.WriteLine("Success");
+                    Trace.WriteLine("Success");
                     break;
                 default:
-                    Console.WriteLine("Unknown status: %d", status);
+                    Trace.WriteLine(string.Format("Unknown status: %d", status));
                     break;
 
             }
