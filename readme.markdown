@@ -22,14 +22,14 @@ Limitations
 -----------
 
  - Files can only be placed in a folder (container). You cannot have files in the root directory.
- - Folders cannot contain folders (blob storage is not support hierarchy).
- - Folder names must be in lower case, and not contain spaces and other special characters.
+ - Folders cannot contain folders (blob storage does not support hierarchy).
+ - Folder names must be in lower case, and cannot contain spaces and other special characters.
  - Performance is poor, and large files are not recommended.
  - Files and folders are cached for one minute, so changes made by other machines may not be instantly viewable.
  - Files (blobs) cannot be empty (i.e. have a zero size).
 
 About
 -----
-AzureBlobDrive is written by Richard Astbury. For more information, or Azure consultancy, please contact two10 degrees: http://www.two10degrees.com/ 
+AzureBlobDrive was written by Richard Astbury. For more information, or Azure consultancy, please contact two10 degrees: http://www.two10degrees.com/ 
 
 

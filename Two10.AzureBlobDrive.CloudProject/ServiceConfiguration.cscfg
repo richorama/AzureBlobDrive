@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ServiceConfiguration serviceName="Two10.AzureBlobDrive.CloudProject" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceConfiguration" osFamily="1" osVersion="*">
+  <Role name="Two10.AzureBlobDrive.WorkerRole">
+    <Instances count="1" />
+    <ConfigurationSettings>
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.Enabled" value="true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountUsername" value="richard.astbury" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountEncryptedPassword" value="MIIBnQYJKoZIhvcNAQcDoIIBjjCCAYoCAQAxggFOMIIBSgIBADAyMB4xHDAaBgNVBAMME1dpbmRvd3MgQXp1cmUgVG9vbHMCEGr7fbdfAMyUTBRnZTDyywIwDQYJKoZIhvcNAQEBBQAEggEAOaCTjFGp8kU2yM0AAG2fsFDUupNw7+ij7aOrgt8HRYQwJHWUy6uZhIMIur+WfonHk913ngla9YOGsdxVAjpTMUlJqa/+nxey4Ej3jRPj4AmivfA3oqsRyRPRB/Hr8XlZoe5bSQ8KYofZHcHWKiB4FAFh8bHR9/9v8kUkIpe26x2+Mlnjk5uh6BQRroh25hlkc731+vYElh3YQ4QmQibhfPQoMgE7siO6wgOlnULUAPTNqa4QNvdiPwb0c5LVh6ZCWfZEkLIE9GHpGTfQYD0pVp3DALwpUtNDjHCBPfT4nnTiUH7ih3XaiUnZnHh5WDgJrKNG7kV8TEZvLcPHSnE7RjAzBgkqhkiG9w0BBwEwFAYIKoZIhvcNAwcECDXoygy9v59ogBCfdIHbsbTmwLkxI26N7sfh" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountExpiration" value="2011-09-30T23:59:59.0000000+01:00" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.RemoteForwarder.Enabled" value="true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString" value="UseDevelopmentStorage=true" />
+    </ConfigurationSettings>
+    <Certificates>
+      <Certificate name="Microsoft.WindowsAzure.Plugins.RemoteAccess.PasswordEncryption" thumbprint="CB8310FB56B8F76D4CF7C8C09F06D8B909BD642F" thumbprintAlgorithm="sha1" />
+    </Certificates>
+  </Role>
+</ServiceConfiguration>

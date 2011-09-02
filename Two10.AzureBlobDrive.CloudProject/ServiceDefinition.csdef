@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ServiceDefinition name="Two10.AzureBlobDrive.CloudProject" xmlns="http://schemas.microsoft.com/ServiceHosting/2008/10/ServiceDefinition">
+  <WorkerRole name="Two10.AzureBlobDrive.WorkerRole" vmsize="ExtraSmall">
+    <Imports>
+      <Import moduleName="RemoteAccess" />
+      <Import moduleName="RemoteForwarder" />
+      <Import moduleName="Diagnostics" />
+    </Imports>
+    <Startup>
+      <Task commandLine="Startup.cmd" executionContext="elevated" taskType="simple" />
+      <Task commandLine="Two10.AzureBlobDrive.Console.exe" executionContext="elevated" taskType="background" />
+    </Startup>
+  </WorkerRole>
+</ServiceDefinition>
