@@ -1,18 +1,34 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Configuration;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Runtime.Caching;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using Dokan;
-using Microsoft.WindowsAzure;
-using Microsoft.WindowsAzure.StorageClient;
+﻿#region Copyright (c) 2011 Two10 degrees
+//
+// (C) Copyright 2011 Two10 degrees
+//      All rights reserved.
+//
+// This software is provided "as is" without warranty of any kind,
+// express or implied, including but not limited to warranties as to
+// quality and fitness for a particular purpose. Active Web Solutions Ltd
+// does not support the Software, nor does it warrant that the Software
+// will meet your requirements or that the operation of the Software will
+// be uninterrupted or error free or that any defects will be
+// corrected. Nothing in this statement is intended to limit or exclude
+// any liability for personal injury or death caused by the negligence of
+// Active Web Solutions Ltd, its employees, contractors or agents.
+//
+#endregion
 
 namespace Two10.AzureBlobDrive
 {
+
+    using System;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.IO;
+    using System.Linq;
+    using System.Runtime.Caching;
+    using System.Text.RegularExpressions;
+    using System.Threading.Tasks;
+    using Dokan;
+    using Microsoft.WindowsAzure;
+    using Microsoft.WindowsAzure.StorageClient;
 
     public class AzureOperations : DokanOperations
     {
@@ -20,11 +36,11 @@ namespace Two10.AzureBlobDrive
         private MemoryCache streamCache = MemoryCache.Default;
         private MemoryCache blobCache = MemoryCache.Default;
         private MemoryCache miscCache = MemoryCache.Default;
-        private Dictionary<string, string > locks = new Dictionary<string, string>();
+        private Dictionary<string, string> locks = new Dictionary<string, string>();
 
-        public AzureOperations()
+        public AzureOperations(string connectionString)
         {
-            CloudStorageAccount account = CloudStorageAccount.Parse(ConfigurationManager.AppSettings["AzureConnectionString"]);
+            CloudStorageAccount account = CloudStorageAccount.Parse(connectionString);
             client = account.CreateCloudBlobClient();
         }
 
@@ -65,7 +81,7 @@ namespace Two10.AzureBlobDrive
                     return -1;
                 }
                 string newContainerName = path.Last();
-                
+
                 if (!IsContainerNameValid(newContainerName))
                 {
                     //return -1;
@@ -95,7 +111,7 @@ namespace Two10.AzureBlobDrive
             System.IO.FileOptions options,
             DokanFileInfo info)
         {
-            return 0;            
+            return 0;
         }
 
         public int DeleteDirectory(string filename, DokanFileInfo info)
@@ -181,14 +197,14 @@ namespace Two10.AzureBlobDrive
                     return -1;
                 }
                 object localsync = new object();
-        
+
                 Parallel.ForEach<IListBlobItem>(container.ListBlobs(), blob =>
                 {
                     try
                     {
                         var blobDetail = GetBlobDetail(blob.Uri.OriginalString);
                         FileInformation finfo = new FileInformation();
-                        finfo.FileName =  System.Web.HttpUtility.UrlDecode(blobDetail.Uri.Segments.Last());
+                        finfo.FileName = System.Web.HttpUtility.UrlDecode(blobDetail.Uri.Segments.Last());
                         finfo.Attributes = System.IO.FileAttributes.Normal;
                         finfo.LastAccessTime = DateTime.Now;
                         finfo.LastWriteTime = DateTime.Now;
@@ -205,7 +221,7 @@ namespace Two10.AzureBlobDrive
                 // TODO: Work out the sub containers here
                 return 0;
 
-                
+
             }
         }
 
@@ -219,7 +235,7 @@ namespace Two10.AzureBlobDrive
                     containers = this.client.ListContainers().ToArray();
                     miscCache.Add("CONTAINERS", containers, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
                 }
-                return containers;    
+                return containers;
             }
         }
 
@@ -231,7 +247,7 @@ namespace Two10.AzureBlobDrive
             return container;
         }
 
-        
+
         private CloudBlob GetBlob(string filename, bool mustExist)
         {
             try
@@ -245,7 +261,7 @@ namespace Two10.AzureBlobDrive
                     }
                     var blobs = container.ListBlobs();
                     string[] path = filename.Split('\\');
-                    string name =  path.Last();
+                    string name = path.Last();
                     var blob = (from b in blobs where System.Web.HttpUtility.UrlDecode(b.Uri.Segments.Last()) == name select b).FirstOrDefault();
                     if (null == blob)
                     {
@@ -293,7 +309,7 @@ namespace Two10.AzureBlobDrive
                 return -1;
 
             var blob = GetBlob(filename, true);
-            
+
             if (blob != null)
             {
                 var blobDetail = GetBlobDetail(blob.Uri.OriginalString);
@@ -397,8 +413,8 @@ namespace Two10.AzureBlobDrive
                     blob.DownloadToStream(stream);
                     //if (stream.Length < MAX_SIZE_FOR_CACHE)
                     //{
-                        // don't cache huge files
-                        streamCache.Add(filename, stream, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
+                    // don't cache huge files
+                    streamCache.Add(filename, stream, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
                     //}
                 }
                 stream.Position = 0;
@@ -465,7 +481,7 @@ namespace Two10.AzureBlobDrive
             return -1;
         }
 
-       
+
 
         public int UnlockFile(string filename, long offset, long length, DokanFileInfo info)
         {
@@ -528,13 +544,13 @@ namespace Two10.AzureBlobDrive
                 dictionary.Add(filename, blob.OpenWrite());
             }
 
-            dictionary[filename].Write(buffer, (int) 0, buffer.Length);
-            writtenBytes = (uint) buffer.Length;
+            dictionary[filename].Write(buffer, (int)0, buffer.Length);
+            writtenBytes = (uint)buffer.Length;
             info.IsDirectory = false;
             return 0;
         }
 
-       
+
         public static bool IsContainerNameValid(string containerName)
         {
             return (Regex.IsMatch(containerName, @"(^([a-z]|\d))((-([a-z]|\d)|([a-z]|\d))+)$") && (3 <= containerName.Length) && (containerName.Length <= 63));
@@ -554,7 +570,7 @@ namespace Two10.AzureBlobDrive
 
                 return blob;
             }
-        
+
         }
 
 
