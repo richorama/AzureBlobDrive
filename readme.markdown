@@ -21,9 +21,7 @@ AzureBlobDrive will also default to the Storage Emulator. Modify the 'AzureConne
 Limitations
 -----------
 
- - Files can only be placed in a folder (container). You cannot have files in the root directory.
- - Folders cannot contain folders (blob storage does not support hierarchy).
- - Folder names must be in lower case, and cannot contain spaces and other special characters.
+ - Root folder names (containers) must be in lower case, and cannot contain spaces and other special characters.
  - Performance is poor, and large files are not recommended.
  - Files and folders are cached for one minute, so changes made by other machines may not be instantly viewable.
  - Files (blobs) cannot be empty (i.e. have a zero size).
