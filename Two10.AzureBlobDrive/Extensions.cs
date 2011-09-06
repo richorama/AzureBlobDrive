@@ -56,7 +56,7 @@ namespace Two10.AzureBlobDrive
             {
                 return "$root";
             }
-            string[] path = filename.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] path = filename.SplitFilename();
             if (path.Length == 0)
             {
                 return "$root";
@@ -77,7 +77,15 @@ namespace Two10.AzureBlobDrive
         }
 
 
+        public static string[] SplitFilename(this string filename)
+        {
+            return filename.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        }
 
+        public static string[] SplitUrl(this string filename)
+        {
+            return filename.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+        }
 
         public static string ToBlobName(this string filename)
         {
@@ -85,27 +93,27 @@ namespace Two10.AzureBlobDrive
             {
                 return string.Empty;
             }
-            string[] path = filename.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] path = filename.SplitFilename();
             switch (path.Length)
             {
                 case 0:
                     throw new ArgumentException("invalid path");
                 case 1:
-                    return HttpUtility.UrlEncode(path[0]);
+                    return path[0];
                 default:
-                    return string.Join("/", (from p in path.Skip(1) select HttpUtility.UrlEncode(p)).ToArray());
+                    return string.Join("/", (from p in path.Skip(1) select p).ToArray());
 
             }
         }
 
         public static string[] SplitIntoPath(this CloudBlobContainer container)
         {
-            return System.Web.HttpUtility.UrlDecode(container.Name).Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+            return System.Web.HttpUtility.UrlDecode(container.Name).Split(new char[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
         }
 
         public static string ToBlobPathWithoutFilename(this Uri uri)
         {
-            var items = uri.AbsolutePath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray();
+            var items = System.Web.HttpUtility.UrlDecode(uri.AbsolutePath).SplitUrl().Skip(1).ToArray();
             if (items.Length > 1)
             {
                 return string.Join("/", items.Take(items.Length - 1));
@@ -115,12 +123,12 @@ namespace Two10.AzureBlobDrive
 
         public static string ToBlobPath(this Uri uri)
         {
-            return string.Join("/", uri.AbsolutePath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray());
+            return string.Join("/", uri.AbsolutePath.SplitUrl().Skip(1).ToArray());
         }
 
         public static string ToBlobFilename(this Uri uri)
         {
-            return uri.AbsolutePath.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries).Last();
+            return uri.AbsolutePath.SplitUrl().Last();
         }
 
 

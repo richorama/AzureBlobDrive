@@ -18,6 +18,7 @@
 namespace Two10.AzureBlobDrive
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Diagnostics;
     using System.IO;
@@ -35,6 +36,7 @@ namespace Two10.AzureBlobDrive
         private MemoryCache streamCache = MemoryCache.Default;
         private MemoryCache blobCache = MemoryCache.Default;
         private MemoryCache miscCache = MemoryCache.Default;
+        private ConcurrentDictionary<string, BlobStream> blobsWriting = new ConcurrentDictionary<string, BlobStream>();
         private HashSet<string> virtualFolders = new HashSet<string>();
         private Dictionary<string, string> locks = new Dictionary<string, string>();
 
@@ -53,19 +55,14 @@ namespace Two10.AzureBlobDrive
 
         public int CloseFile(string filename, DokanFileInfo info)
         {
-            if (info.Context != null)
+            BlobStream stream = null;
+            if (blobsWriting.TryRemove(filename, out stream))
             {
-                var dictionary = info.Context as Dictionary<string, BlobStream>;
-                if (dictionary.ContainsKey(filename))
-                {
-                    Trace.WriteLine(string.Format("CloseFile {0}", filename));
-                    BlobStream stream = dictionary[filename];
-                    stream.Commit();
-                    stream.Dispose();
-                    this.blobCache.Remove(filename);
-                    stream.Blob.Container.InvalidateCache();
-                }
-                dictionary.Remove(filename);
+                Trace.WriteLine(string.Format("CloseFile {0}", filename));
+                stream.Commit();
+                stream.Dispose();
+                this.blobCache.Remove(filename);
+                stream.Blob.Container.InvalidateCache();
             }
 
             return 0;
@@ -82,9 +79,7 @@ namespace Two10.AzureBlobDrive
 
                 if (!IsContainerNameValid(containerName))
                 {
-                    //return -1;
-                    Trace.WriteLine("WARNING, container name may not be valid");
-                    containerName = containerName.Trim().Replace(" ", "-").ToLower();
+                    return -DokanNet.ERROR_INVALID_NAME;
                 }
 
                 if (!(from c in GetAllContainers() where c.Name == containerName select c).Any())
@@ -118,29 +113,31 @@ namespace Two10.AzureBlobDrive
         {
             Trace.WriteLine(string.Format("CreateFile {0}", filename));
 
-            // When trying to open a file for reading, succeed only if the file already exists.
-            if (mode == FileMode.Open && (access == FileAccess.Read || access == FileAccess.ReadWrite))
+            if (mode == FileMode.CreateNew)
             {
-                if (GetFileInformation(filename, new FileInformation(), new DokanFileInfo(0)) == 0)
-                {
-                    return 0;
-                }
-                else
-                {
-                    return -DokanNet.ERROR_FILE_NOT_FOUND;
-                }
+                var blob = this.GetBlob(filename, false);
+                blobsWriting.TryAdd(filename, blob.OpenWrite());
+
+                return 0;
             }
-            // When creating a file, always succeed. (Empty directories will be implicitly created as needed.)
-            else if (mode == FileMode.Create || mode == FileMode.OpenOrCreate)
+
+            // When trying to open a file for reading, succeed only if the file already exists.
+            //if (mode == FileMode.Open && (access == FileAccess.Read || access == FileAccess.ReadWrite))
+            //{
+            if (GetFileInformation(filename, new FileInformation(), new DokanFileInfo(0)) == 0)
             {
-                // Since we're creating a file, we don't need to track the parents (up the tree) as empty directories any longer.
-                //RemoveEmptyDirectories(Path.GetDirectoryName(filename));
                 return 0;
             }
             else
             {
-                throw new NotImplementedException();
+                return -DokanNet.ERROR_FILE_NOT_FOUND;
             }
+            //}
+            //else if (mode == FileMode.Create || mode == FileMode.OpenOrCreate)
+            //{
+            //    return 0;
+            //}
+            //return 0;
         }
 
         public int DeleteDirectory(string filename, DokanFileInfo info)
@@ -149,21 +146,34 @@ namespace Two10.AzureBlobDrive
             {
                 Trace.WriteLine(string.Format("DeleteDirectory {0}", filename));
 
-                string containerName = filename.ToContainerName(false);
-
-                if (!(from c in GetAllContainers() where c.Name == containerName select c).Any())
-                {
-                    var container = client.GetContainerReference(containerName);
-                    container.Delete();
-                    container.InvalidateCache();
-                    lock (miscCache)
-                    {
-                        miscCache.Remove("CONTAINERS");
-                    }
-                }
-
                 virtualFolders.RemoveWhere((s) => s.StartsWith(filename));
 
+                string[] path = filename.SplitFilename();
+                if (path.Length == 1)
+                {
+                    // a container is being deleted
+                    if ((from c in GetAllContainers() where c.Name == path[0] select c).Any())
+                    {
+                        var container = client.GetContainerReference(path[0]);
+                        container.Delete();
+                        container.InvalidateCache();
+                        lock (miscCache)
+                        {
+                            miscCache.Remove("CONTAINERS");
+                        }
+                    }
+                    return 0;
+                }
+
+                // this is a blob
+                string prefix = string.Join("/", filename.SplitFilename().Skip(1));
+                var parentContainer = GetContainer(filename.ToContainerName(false));
+                foreach (var blob in GetBlobsStartingWith(prefix, parentContainer, false))
+                {
+                    var blobDetail = GetBlobDetail(blob.Uri);
+                    blobDetail.Delete();
+                }
+                parentContainer.InvalidateCache();
                 return 0;
             }
             catch (Exception ex)
@@ -230,13 +240,13 @@ namespace Two10.AzureBlobDrive
 
             // write out files
             object localsync = new object();
-            string prefix = string.Join("/", filename.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries).Skip(1));
+            string prefix = string.Join("/", filename.SplitFilename().Skip(1));
 
-            Parallel.ForEach<IListBlobItem>(GetBlobsStartingWith(prefix, container), blob =>
+            Parallel.ForEach<IListBlobItem>(GetBlobsStartingWith(prefix, container, true), blob =>
             {
                 try
                 {
-                    var blobDetail = GetBlobDetail(blob.Uri.OriginalString);
+                    var blobDetail = GetBlobDetail(blob.Uri);
                     FileInformation finfo = new FileInformation();
                     finfo.FileName = System.Web.HttpUtility.UrlDecode(blobDetail.Uri.ToBlobFilename());
                     finfo.Attributes = System.IO.FileAttributes.Normal;
@@ -288,7 +298,7 @@ namespace Two10.AzureBlobDrive
                     {
                         return null;
                     }
-                    string name = System.Web.HttpUtility.UrlDecode(filename.ToBlobName());
+                    string name = filename.ToBlobName();
                     var blob = (from b in container.CachedListBlobs() where System.Web.HttpUtility.UrlDecode(b.Uri.ToBlobPath()) == name select b).FirstOrDefault();
                     if (null == blob)
                     {
@@ -317,11 +327,20 @@ namespace Two10.AzureBlobDrive
         {
             Trace.WriteLine(string.Format("GetFileInformation {0}", filename));
 
+            if (filename == @"\")
+            {
+                fileinfo.Attributes = System.IO.FileAttributes.Directory;
+                fileinfo.LastAccessTime = DateTime.Now;
+                fileinfo.LastWriteTime = DateTime.Now;
+                fileinfo.CreationTime = DateTime.Now;
+                return 0;
+            }
+
             var blob = GetBlob(filename, true);
             if (blob != null)
             {
                 // this is file
-                var blobDetail = GetBlobDetail(blob.Uri.OriginalString);
+                var blobDetail = GetBlobDetail(blob.Uri);
                 fileinfo.FileName = System.Web.HttpUtility.UrlDecode(blobDetail.Uri.ToBlobPath());
                 fileinfo.Attributes = System.IO.FileAttributes.Normal;
                 fileinfo.LastAccessTime = DateTime.Now;
@@ -331,7 +350,7 @@ namespace Two10.AzureBlobDrive
                 return 0;
             }
 
-            if (GetFoldersStartingWith(filename, true).Any())
+            if (GetFoldersStartingWith(filename, true).Length > 0)
             {
                 // this is a container
                 fileinfo.Attributes = System.IO.FileAttributes.Directory;
@@ -350,6 +369,16 @@ namespace Two10.AzureBlobDrive
                 return 0;
             }
 
+            if (blobsWriting.ContainsKey(filename))
+            {
+                fileinfo.Attributes = System.IO.FileAttributes.Normal;
+                fileinfo.LastAccessTime = DateTime.Now;
+                fileinfo.LastWriteTime = DateTime.Now;
+                fileinfo.CreationTime = DateTime.Now;
+                fileinfo.Length = 0;
+                return 0;
+            }
+
             return -DokanNet.ERROR_FILE_NOT_FOUND;
         }
 
@@ -364,7 +393,7 @@ namespace Two10.AzureBlobDrive
                 Trace.WriteLine(string.Format("LockFile {0}", filename));
                 lock (this.locks)
                 {
-                    var blob = this.GetBlobDetail(filename);
+                    var blob = this.GetBlobDetail(this.GetBlob(filename, true).Uri);
                     this.locks.Add(filename, blob.AcquireLease());
                     return 0;
                 }
@@ -394,12 +423,26 @@ namespace Two10.AzureBlobDrive
                     destBlob.CopyFromBlob(sourceBlob);
                     info.IsDirectory = false;
                     destBlob.Container.InvalidateCache();
+                    sourceBlob.Container.InvalidateCache();
+                    destBlob.Container.InvalidateCache();
                     return 0;
                 }
                 else
                 {
-                    // you cannot rename a container.
-                    return -1;
+                    if (filename.SplitFilename().Length <= 1)
+                    {
+                        // you cannot rename a container.
+                        return -1;
+                    }
+
+                    HashSet<string> newVirtualFolder = new HashSet<string>();
+                    foreach (string item in this.virtualFolders)
+                    {
+                        newVirtualFolder.Add(item.Replace(filename, newname));
+                    }
+                    this.virtualFolders = newVirtualFolder;
+
+                    return 0;
 
                 }
             }
@@ -555,18 +598,9 @@ namespace Two10.AzureBlobDrive
         {
             Trace.WriteLine(string.Format("WriteFile {0}", filename));
 
-            if (info.Context == null)
-            {
-                info.Context = new Dictionary<string, BlobStream>();
-            }
-            Dictionary<string, BlobStream> dictionary = info.Context as Dictionary<string, BlobStream>;
-            if (!dictionary.ContainsKey(filename))
-            {
-                var blob = this.GetBlob(filename, false);
-                dictionary.Add(filename, blob.OpenWrite());
-            }
+            BlobStream stream = blobsWriting.GetOrAdd(filename, str => this.GetBlob(filename, false).OpenWrite());
 
-            dictionary[filename].Write(buffer, (int)0, buffer.Length);
+            stream.Write(buffer, (int)0, buffer.Length);
             writtenBytes = (uint)buffer.Length;
             info.IsDirectory = false;
             return 0;
@@ -578,16 +612,16 @@ namespace Two10.AzureBlobDrive
             return (Regex.IsMatch(containerName, @"(^([a-z]|\d))((-([a-z]|\d)|([a-z]|\d))+)$") && (3 <= containerName.Length) && (containerName.Length <= 63));
         }
 
-        private CloudBlob GetBlobDetail(string uri)
+        private CloudBlob GetBlobDetail(Uri uri)
         {
             lock (blobCache)
             {
-                CloudBlob blob = blobCache[uri] as CloudBlob;
+                CloudBlob blob = blobCache[uri.OriginalString] as CloudBlob;
                 if (null == blob)
                 {
-                    blob = client.GetBlobReference(uri);
+                    blob = client.GetBlobReference(uri.OriginalString);
                     blob.FetchAttributes();
-                    blobCache.Add(uri, blob, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
+                    blobCache.Add(uri.OriginalString, blob, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
                 }
 
                 return blob;
@@ -595,11 +629,11 @@ namespace Two10.AzureBlobDrive
 
         }
 
-        private IEnumerable<string> GetFoldersStartingWith(string prefix, bool matchOnly)
+        private string[] GetFoldersStartingWith(string prefix, bool matchOnly)
         {
             if ("\\" == prefix)
             {
-                return (from b in GetAllContainers() where "$root" != b.Name select b.Name.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[0]).Distinct();
+                return (from b in GetAllContainers() where "$root" != b.Name select b.Name.SplitFilename()[0]).Distinct().ToArray();
             }
 
             string containerName = prefix.ToContainerName(false);
@@ -607,21 +641,25 @@ namespace Two10.AzureBlobDrive
             var container = (from c in GetAllContainers() where c.Name == containerName select c).FirstOrDefault();
             if (null == container)
             {
-                return null;
+                return new string[] { };
             }
 
-            string blobPrefix = string.Join("/", prefix.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries).Skip(1).ToArray());
+            string blobPrefix = string.Join("/", prefix.SplitFilename().Skip(1).ToArray());
 
             string[] childPaths =
                 (from b in container.CachedListBlobs()
                  where IsSubFolderMatch(b.Uri, blobPrefix, matchOnly)
-                 select b.Uri.ToBlobPath().Remove(0, blobPrefix.Length))
+                 select System.Web.HttpUtility.UrlDecode(b.Uri.ToBlobPathWithoutFilename()).Remove(0, blobPrefix.Length))
                  .Union(from c in virtualFolders
                         where c.StartsWith(prefix + "\\")
                         where c.Length > prefix.Length ^ matchOnly
-                        select c.Remove(0, prefix.Length + 1)).Distinct().ToArray();
+                        select c.Remove(0, prefix.Length + 1)).Distinct().Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
 
-            return (from f in childPaths select f.Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries)[0]).Distinct();
+            if (childPaths.Length == 0)
+            {
+                return childPaths;
+            }
+            return (from f in childPaths select f.SplitUrl()[0]).Distinct().ToArray();
         }
 
         private bool IsSubFolderMatch(Uri uri, string prefix, bool matchOnly)
@@ -641,22 +679,25 @@ namespace Two10.AzureBlobDrive
         }
 
 
-        private IEnumerable<IListBlobItem> GetBlobsStartingWith(string prefix, CloudBlobContainer container)
+        private IEnumerable<IListBlobItem> GetBlobsStartingWith(string prefix, CloudBlobContainer container, bool exactMatch)
         {
-
             return (from b in container.CachedListBlobs()
-                    where BlobAtPath(b.Uri.ToBlobPath(), prefix)
+                    where BlobAtPath(System.Web.HttpUtility.UrlDecode(b.Uri.ToBlobPath()), prefix, exactMatch)
                     select b);
         }
 
-        private bool BlobAtPath(string file, string folderPrefix)
+        private bool BlobAtPath(string file, string folderPrefix, bool exactMatch)
         {
             int index = file.LastIndexOf('/');
             if (index == -1)
             {
                 return string.IsNullOrWhiteSpace(folderPrefix);
             }
-            return file.Substring(0, index) == folderPrefix;
+            if (exactMatch)
+            {
+                return file.Substring(0, index) == folderPrefix;    
+            }
+            return file.StartsWith(folderPrefix);
         }
 
 
