@@ -9,6 +9,19 @@
       <Setting name="Microsoft.WindowsAzure.Plugins.RemoteAccess.AccountExpiration" value="2011-09-30T23:59:59.0000000+01:00" />
       <Setting name="Microsoft.WindowsAzure.Plugins.RemoteForwarder.Enabled" value="true" />
       <Setting name="Microsoft.WindowsAzure.Plugins.Diagnostics.ConnectionString" value="UseDevelopmentStorage=true" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.ActivationToken" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.Refresh" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.Diagnostics" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.WaitForConnectivity" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.EnableDomainJoin" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DomainFQDN" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DomainControllerFQDN" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DomainAccountName" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DomainPassword" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DomainOU" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DNSServers" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.Administrators" value="" />
+      <Setting name="Microsoft.WindowsAzure.Plugins.Connect.DomainSiteName" value="" />
     </ConfigurationSettings>
     <Certificates>
       <Certificate name="Microsoft.WindowsAzure.Plugins.RemoteAccess.PasswordEncryption" thumbprint="CB8310FB56B8F76D4CF7C8C09F06D8B909BD642F" thumbprintAlgorithm="sha1" />

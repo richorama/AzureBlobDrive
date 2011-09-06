@@ -5,6 +5,7 @@
       <Import moduleName="RemoteAccess" />
       <Import moduleName="RemoteForwarder" />
       <Import moduleName="Diagnostics" />
+      <Import moduleName="Connect" />
     </Imports>
     <Startup>
       <Task commandLine="Startup.cmd" executionContext="elevated" taskType="simple" />
