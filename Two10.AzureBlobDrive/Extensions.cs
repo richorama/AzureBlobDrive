@@ -20,7 +20,6 @@ namespace Two10.AzureBlobDrive
     using System;
     using System.Linq;
     using System.Runtime.Caching;
-    using System.Web;
     using Microsoft.WindowsAzure.StorageClient;
     using Microsoft.WindowsAzure.StorageClient.Protocol;
 
@@ -108,7 +107,7 @@ namespace Two10.AzureBlobDrive
 
         public static string[] SplitIntoPath(this CloudBlobContainer container)
         {
-            return System.Web.HttpUtility.UrlDecode(container.Name).Split(new char[] {'/'}, StringSplitOptions.RemoveEmptyEntries);
+            return System.Web.HttpUtility.UrlDecode(container.Name).Split(new char[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
         }
 
         public static string ToBlobPathWithoutFilename(this Uri uri)
@@ -124,6 +123,11 @@ namespace Two10.AzureBlobDrive
         public static string ToBlobPath(this Uri uri)
         {
             return string.Join("/", uri.AbsolutePath.SplitUrl().Skip(1).ToArray());
+        }
+
+        public static string ToWindowsPath(this Uri uri)
+        {
+            return @"\" + string.Join(@"\", (from i in uri.AbsolutePath.SplitUrl() select System.Web.HttpUtility.UrlDecode(i)).ToArray());
         }
 
         public static string ToBlobFilename(this Uri uri)
