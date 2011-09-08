@@ -435,6 +435,23 @@ namespace Two10.AzureBlobDrive
                         return -1;
                     }
 
+                    var container = GetContainer(filename.ToContainerName(true));
+                    foreach (var blob in GetBlobsStartingWith(filename.ToBlobName(), container, false))
+                    {
+                        try
+                        {
+                            var toBlob = GetBlob(blob.Uri.ToWindowsPath().Replace(filename, newname) , false);
+                            toBlob.CopyFromBlob(GetBlobDetail(blob.Uri));
+                            GetBlobDetail(blob.Uri).Delete();
+                            toBlob.Container.InvalidateCache();
+                        }
+                        catch (Exception ex)
+                        {
+                            Trace.WriteLine(ex.ToString());
+                        }
+                    }
+                    container.InvalidateCache();
+                    
                     HashSet<string> newVirtualFolder = new HashSet<string>();
                     foreach (string item in this.virtualFolders)
                     {
