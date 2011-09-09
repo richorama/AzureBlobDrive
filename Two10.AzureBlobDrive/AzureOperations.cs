@@ -121,9 +121,6 @@ namespace Two10.AzureBlobDrive
                 return 0;
             }
 
-            // When trying to open a file for reading, succeed only if the file already exists.
-            //if (mode == FileMode.Open && (access == FileAccess.Read || access == FileAccess.ReadWrite))
-            //{
             if (GetFileInformation(filename, new FileInformation(), new DokanFileInfo(0)) == 0)
             {
                 return 0;
@@ -132,12 +129,6 @@ namespace Two10.AzureBlobDrive
             {
                 return -DokanNet.ERROR_FILE_NOT_FOUND;
             }
-            //}
-            //else if (mode == FileMode.Create || mode == FileMode.OpenOrCreate)
-            //{
-            //    return 0;
-            //}
-            //return 0;
         }
 
         public int DeleteDirectory(string filename, DokanFileInfo info)
@@ -479,8 +470,6 @@ namespace Two10.AzureBlobDrive
 
         private MemoryStream GetStream(string filename)
         {
-            //const int MAX_SIZE_FOR_CACHE = 1024 * 1024;
-
             lock (streamCache)
             {
                 MemoryStream stream = streamCache[filename] as MemoryStream;
@@ -493,11 +482,7 @@ namespace Two10.AzureBlobDrive
                     }
                     stream = new MemoryStream();
                     blob.DownloadToStream(stream);
-                    //if (stream.Length < MAX_SIZE_FOR_CACHE)
-                    //{
-                    // don't cache huge files
-                    streamCache.Add(filename, stream, new CacheItemPolicy() { AbsoluteExpiration = DateTime.Now.AddMinutes(1) });
-                    //}
+                    streamCache.Add(filename, stream, new CacheItemPolicy() { SlidingExpiration = TimeSpan.FromMinutes(1) });
                 }
                 stream.Position = 0;
                 return stream;
