@@ -4,6 +4,8 @@ AzureBlobDrive allows you to mount Azure Blob Storage as a drive in Windows. Thi
 
 AzureBlobDrive is based on the Dokan user mode file system for Windows: http://dokan-dev.net/en/
 
+Watch a video AzureBlobDrive: http://screencast.com/t/thtRbQvZq1Pr
+
 Installation
 ------------
 
