@@ -6,6 +6,9 @@ AzureBlobDrive is based on the Dokan user mode file system for Windows: http://d
 
 Watch a video AzureBlobDrive: http://screencast.com/t/thtRbQvZq1Pr
 
+Download the console application here: https://github.com/downloads/richorama/AzureBlobDrive/Microsoft.WindowsAzure.StorageClient.zip
+(you will need to update the config file to set your storage account details)
+
 Installation
 ------------
 
