@@ -1,22 +1,23 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Two10.AzureBlobDrive", "Two10.AzureBlobDrive\Two10.AzureBlobDrive.csproj", "{57EE0EDA-ECB3-4F63-8318-D05C4BD99B16}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DokanNet", "DokanNet\DokanNet.csproj", "{A09B408A-26A0-4FF8-83D5-6E1B1DA5F63C}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8A17E26F-E775-42C6-97AF-BD05C854EF11}"
 	ProjectSection(SolutionItems) = preProject
 		.gitignore = .gitignore
 		LICENSE.txt = LICENSE.txt
-		readme.markdown = readme.markdown
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Two10.AzureBlobDrive", "Two10.AzureBlobDrive\Two10.AzureBlobDrive.csproj", "{57EE0EDA-ECB3-4F63-8318-D05C4BD99B16}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DokanNet", "DokanNet\DokanNet.csproj", "{A09B408A-26A0-4FF8-83D5-6E1B1DA5F63C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Two10.AzureBlobDrive.Console", "Two10.AzureBlobDrive.Console\Two10.AzureBlobDrive.Console.csproj", "{3580831C-5B2D-4835-871C-D8BE405B68B3}"
 EndProject
 Project("{CC5FD16D-436D-48AD-A40C-5A424C6E3E79}") = "Two10.AzureBlobDrive.CloudProject", "Two10.AzureBlobDrive.CloudProject\Two10.AzureBlobDrive.CloudProject.ccproj", "{9B9B6A5F-7291-44E2-8D01-17FD21536F7E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Two10.AzureBlobDrive.WorkerRole", "Two10.AzureBlobDrive.WorkerRole\Two10.AzureBlobDrive.WorkerRole.csproj", "{8075EC64-87AD-4DE9-918B-3B85F1D7FC77}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Two10.AzureBlobDrive.Plugin", "Two10.AzureBlobDrive.Plugin\Two10.AzureBlobDrive.Plugin.csproj", "{7E7820C5-9986-4CF4-B62B-954BEF78BB57}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -80,6 +81,16 @@ Global
 		{8075EC64-87AD-4DE9-918B-3B85F1D7FC77}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
 		{8075EC64-87AD-4DE9-918B-3B85F1D7FC77}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{8075EC64-87AD-4DE9-918B-3B85F1D7FC77}.Release|x86.ActiveCfg = Release|Any CPU
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Debug|Any CPU.ActiveCfg = Debug|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Debug|Mixed Platforms.ActiveCfg = Debug|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Debug|Mixed Platforms.Build.0 = Debug|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Debug|x86.ActiveCfg = Debug|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Debug|x86.Build.0 = Debug|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Release|Any CPU.ActiveCfg = Release|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Release|Mixed Platforms.ActiveCfg = Release|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Release|Mixed Platforms.Build.0 = Release|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Release|x86.ActiveCfg = Release|x86
+		{7E7820C5-9986-4CF4-B62B-954BEF78BB57}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
